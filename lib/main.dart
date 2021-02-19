@@ -1,5 +1,23 @@
 import 'package:flutter/material.dart';
 
+// A, B, C, D, E, F, G
+
+class Game {
+  final String center;
+  final List<String> otherLetters;
+  final List<String> validWords;
+
+  Game(
+      {required this.center,
+      required this.otherLetters,
+      required this.validWords});
+}
+
+// List of possible answers.S
+
+// Some way to input leters
+// Some way to list which words they've found.
+
 void main() {
   runApp(MyApp());
 }
