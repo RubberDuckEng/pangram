@@ -10,10 +10,18 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:pangram/main.dart';
 
+class MockServer implements Server {
+  @override
+  Future<Board> nextBoard() {
+    // TODO: implement nextBoard
+    throw UnimplementedError();
+  }
+}
+
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(MyApp());
+    await tester.pumpWidget(MyApp(server: new MockServer()));
 
     // Verify that our counter starts at 0.
     expect(find.text('0'), findsOneWidget);
