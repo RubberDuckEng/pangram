@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:pangram/main.dart';
+import 'package:pangram/board.dart';
 
 class MockServer implements Server {
   @override

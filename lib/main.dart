@@ -1,18 +1,10 @@
-import 'package:flutter/material.dart';
 import 'dart:math';
 
+import 'package:flutter/material.dart';
+
+import 'board.dart';
+
 // A, B, C, D, E, F, G
-
-class Board {
-  final String center;
-  final List<String> otherLetters;
-  final List<String> validWords;
-
-  Board(
-      {required this.center,
-      required this.otherLetters,
-      required this.validWords});
-}
 
 // List of possible answers.S
 
