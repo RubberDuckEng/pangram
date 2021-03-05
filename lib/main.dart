@@ -1,6 +1,8 @@
 import 'dart:math';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import 'board.dart';
 
@@ -34,6 +36,7 @@ class MyApp extends StatelessWidget {
 
 class HexagonPainter extends CustomPainter {
   final Color color;
+  Path? _lastDrawnPath;
 
   HexagonPainter({required this.color});
 
@@ -55,11 +58,14 @@ class HexagonPainter extends CustomPainter {
     var paint = Paint();
     paint.color = color;
     canvas.drawPath(path, paint);
+
+    _lastDrawnPath = path;
   }
 
-  // TODO: Hit test within the hexagon.
-  // @override
-  // bool? hitTest(Offset position) {}
+  @override
+  bool? hitTest(Offset position) {
+    return _lastDrawnPath?.contains(position);
+  }
 
   @override
   bool shouldRepaint(covariant HexagonPainter oldDelegate) {
@@ -93,7 +99,7 @@ class PangramTile extends StatelessWidget {
           width: 75.0,
           child: CustomPaint(painter: HexagonPainter(color: color)),
         ),
-        Text(letter),
+        Text(letter.toUpperCase(), style: TextStyle(fontSize: 24)),
       ]),
     );
   }
@@ -139,11 +145,24 @@ class PangramLayout extends MultiChildLayoutDelegate {
 
 class FoundWords extends StatelessWidget {
   final List<String> foundWords;
-  FoundWords({Key? key, required this.foundWords}) : super(key: key);
+  final Board board;
+  FoundWords({Key? key, required this.foundWords, required this.board})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Text(foundWords.join(", "));
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: Colors.lightBlue.shade200,
+        ),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      padding: EdgeInsets.all(10),
+      constraints: BoxConstraints(minWidth: 200, minHeight: 100),
+      child: Text(
+          "Found ${foundWords.length} of ${board.validWords.length}:\n${foundWords.join('\n')}"),
+    );
   }
 }
 
@@ -220,7 +239,7 @@ class _PangramGameState extends State<PangramGame> {
     }
     return Column(
       children: [
-        FoundWords(foundWords: foundWords),
+        FoundWords(foundWords: foundWords, board: widget.board),
         Text(typedWord),
         CustomMultiChildLayout(delegate: PangramLayout(), children: children),
         ElevatedButton(
@@ -241,16 +260,23 @@ class MyHomePage extends StatefulWidget {
 }
 
 class Server {
+  List<Board>? _cachedBoards;
+
+  Future<List<Board>> ensureBoards() async {
+    if (_cachedBoards != null) return Future.value(_cachedBoards);
+    http.Response response = await http.get(Uri.parse("boards.json"));
+    var jsonBoards = json.decode(response.body);
+    var inflatedBoards =
+        jsonBoards.map<Board>((json) => Board.fromJson(json)).toList();
+    _cachedBoards = inflatedBoards;
+    print("Loaded ${inflatedBoards.length} boards.");
+    return inflatedBoards;
+  }
+
   Future<Board> nextBoard() async {
-    return Future.delayed(
-      new Duration(milliseconds: 500),
-      () {
-        return Board(
-            center: "A",
-            otherLetters: ["B", "C", "D", "E", "F", "G"],
-            validWords: ["FADE"]);
-      },
-    );
+    var boards = await ensureBoards();
+    int boardIndex = Random().nextInt(boards.length);
+    return boards[boardIndex];
   }
 }
 
@@ -320,8 +346,8 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: onNextGame,
-        tooltip: 'Next Game',
-        child: Icon(Icons.skip_next),
+        tooltip: 'New Game',
+        child: Icon(Icons.refresh_outlined),
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }

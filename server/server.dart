@@ -9,6 +9,8 @@
 // For a given list of word commonality.
 // Compute "hardness score" where hardness is bucketed commonality.
 
+import 'dart:io';
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:pangram/board.dart';
 
@@ -30,7 +32,7 @@ class WordList {
 
   static bool isLegalWord(String word) {
     // Also exclude words with S in them?
-    return word.length > 4;
+    return word.length >= 4;
   }
 
   List<LetterCluster> _computeLetterClusters() {
@@ -41,6 +43,9 @@ class WordList {
       if (letters.length != 7) continue;
       letters.sort();
       letterSets.add(letters.join(""));
+      if (letterSets.length > 10) {
+        break;
+      }
     }
 
     List<LetterCluster> clusters = [];
@@ -80,7 +85,8 @@ class Server {
           center: center,
           otherLetters:
               cluster.letterSet.where((letter) => letter != center).toList(),
-          validWords: [],
+          validWords:
+              cluster.words.where((word) => word.contains(center)).toList(),
         ));
       }
     }
@@ -106,5 +112,7 @@ void main() async {
   Server server = Server(wordList);
   List<Board> boards = await server.allBoards();
   print("Boards: ${boards.length}");
-  print(boards[0].toJson());
+
+  File boardsFile = File("web/boards.json");
+  boardsFile.writeAsStringSync(json.encode(boards));
 }
