@@ -113,6 +113,8 @@ void main() async {
   List<Board> boards = await server.allBoards();
   print("Boards: ${boards.length}");
 
-  File boardsFile = File("web/boards.json");
+  String boardsPath = "web/boards.json";
+  File boardsFile = File(boardsPath);
   boardsFile.writeAsStringSync(json.encode(boards));
+  print("Wrote boards to: $boardsPath");
 }

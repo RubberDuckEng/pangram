@@ -17,6 +17,12 @@ class MockServer implements Server {
     // TODO: implement nextBoard
     throw UnimplementedError();
   }
+
+  @override
+  Future<List<Board>> ensureBoards() {
+    // TODO: implement ensureBoards
+    throw UnimplementedError();
+  }
 }
 
 void main() {
