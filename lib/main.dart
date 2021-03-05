@@ -171,6 +171,7 @@ class PangramGame extends StatefulWidget {
   final VoidCallback onWin;
 
   PangramGame({required this.board, required this.onWin})
+      // Make the board Key so when the board changes State is dropped.
       : super(key: ObjectKey(board));
 
   @override
@@ -179,6 +180,7 @@ class PangramGame extends StatefulWidget {
 
 class _PangramGameState extends State<PangramGame> {
   String typedWord = "";
+  List<int> otherLettersOrder = List<int>.generate(6, (i) => i);
 
   // TODO: This is really business logic state rather than UI state.
   List<String> foundWords = <String>[];
@@ -186,6 +188,18 @@ class _PangramGameState extends State<PangramGame> {
   void typeLetter(String letter) {
     setState(() {
       typedWord += letter;
+    });
+  }
+
+  void scramblePressed() {
+    setState(() {
+      otherLettersOrder.shuffle();
+    });
+  }
+
+  void deletePressed() {
+    setState(() {
+      typedWord = typedWord.substring(0, typedWord.length - 1);
     });
   }
 
@@ -228,7 +242,7 @@ class _PangramGameState extends State<PangramGame> {
           ))
     ];
     for (var i = 0; i < widget.board.otherLetters.length; ++i) {
-      var letter = widget.board.otherLetters[i];
+      var letter = widget.board.otherLetters[otherLettersOrder[i]];
       children.add(LayoutId(
           id: _PangramSlot.values[i + 1],
           child: PangramTile(
@@ -242,9 +256,18 @@ class _PangramGameState extends State<PangramGame> {
         FoundWords(foundWords: foundWords, board: widget.board),
         Text(typedWord),
         CustomMultiChildLayout(delegate: PangramLayout(), children: children),
-        ElevatedButton(
-            onPressed: typedWord == "" ? null : enterPressed,
-            child: Text("ENTER")),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+                onPressed: typedWord == "" ? null : deletePressed,
+                child: Text("DELETE")),
+            ElevatedButton(
+                onPressed: typedWord == "" ? null : enterPressed,
+                child: Text("ENTER")),
+            ElevatedButton(onPressed: scramblePressed, child: Text("SCRAMBLE")),
+          ],
+        ),
       ],
     );
   }
