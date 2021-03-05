@@ -170,8 +170,8 @@ class PangramGame extends StatefulWidget {
   final Board board;
   final VoidCallback onWin;
 
-  PangramGame({Key? key, required this.board, required this.onWin})
-      : super(key: key);
+  PangramGame({required this.board, required this.onWin})
+      : super(key: ObjectKey(board));
 
   @override
   _PangramGameState createState() => _PangramGameState();
