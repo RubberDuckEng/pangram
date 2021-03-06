@@ -9,9 +9,10 @@ Published at: https://pangram-ce21c.web.app/#/
 `flutter run` should "just work" in a web browser.
 `flutter pub run build_runner build ` is needed any time Board, Manifest or any other @JSONSerliazable is edited.
 
+`.cache` is populated with word lists pulled from the web and can be safely deleted.
+
 # Known issues
 * Missing words (e.g. warf)
-* Layout breaks with too many words
 * Should save state in local storage (which board you're on, words you've found) -- reload throws away all your work.
 * Should put the board in the URL (so you can link to a board). (What is firebase's memcache?  Server should boot, self-populate.)
 
