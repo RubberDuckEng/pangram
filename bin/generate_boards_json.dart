@@ -124,6 +124,11 @@ class BoardGenerator {
     List<LetterCluster> clusters = wordList.letterClusters;
     clusters.sort((a, b) => a.letters.compareTo(b.letters));
 
+    // maxWordCount 269 for the norvig list
+    // int maxWordCount =
+    //     clusters.fold(0, (maxWords, cluster) => cluster.words.length);
+    // print("Clusters maxWordCount: $maxWordCount");
+
     for (LetterCluster cluster in clusters) {
       for (String center in cluster.letterSet) {
         List<String> validWords =

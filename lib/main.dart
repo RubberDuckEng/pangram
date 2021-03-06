@@ -291,25 +291,32 @@ class _PangramGameState extends State<PangramGame> {
     });
   }
 
+  String? _validateGuessedWord(String guessedWord) {
+    if (foundWords.contains(guessedWord)) {
+      return 'Already found "$guessedWord"';
+    }
+
+    if (!guessedWord.contains(widget.board.center)) {
+      return '"$guessedWord" does not contain the center letter "${widget.board.center}"';
+    }
+
+    if (!widget.board.validWords.contains(guessedWord)) {
+      return '"$guessedWord" is not a valid word';
+    }
+    return null;
+  }
+
   void enterPressed() {
     setState(() {
       var guessedWord = typedWord;
       typedWord = "";
 
-      if (foundWords.contains(guessedWord)) {
-        final snackBar =
-            SnackBar(content: Text('Already found "$guessedWord"'));
+      String? errorMessage = _validateGuessedWord(guessedWord);
+      if (errorMessage != null) {
+        final snackBar = SnackBar(content: Text(errorMessage));
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
         return;
       }
-
-      if (!widget.board.validWords.contains(guessedWord)) {
-        final snackBar =
-            SnackBar(content: Text('"$guessedWord" is not a valid word'));
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-        return;
-      }
-
       foundWords.add(guessedWord);
     });
 

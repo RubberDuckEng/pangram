@@ -11,7 +11,6 @@ Published at: https://pangram-ce21c.web.app/#/
 
 # Known issues
 * Missing words (e.g. warf)
-* Doesn't tell difference between known word vs. missing center.
 * Layout breaks with too many words
 * Should save state in local storage (which board you're on, words you've found) -- reload throws away all your work.
 * Should put the board in the URL (so you can link to a board). (What is firebase's memcache?  Server should boot, self-populate.)
@@ -23,7 +22,6 @@ Published at: https://pangram-ce21c.web.app/#/
 * Needs a text field for when using a keyboard. (Hexegons should still press when typing from keyboard?)
 
 ## Features
-* Should tell how "hard" a word is (frequency?) Frequency data: https://en.lexipedia.org/download.php?freq=1&range=4+-+28
 * Social, High-score, share link.  "beat your friend"
 * Share a board on twitter.
 * Add Analytics (firebase_analytics is not yet null-safe)
