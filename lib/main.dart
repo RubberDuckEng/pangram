@@ -138,11 +138,24 @@ class PangramLayout extends MultiChildLayoutDelegate {
   bool shouldRelayout(covariant MultiChildLayoutDelegate oldDelegate) => false;
 }
 
-class FoundWords extends StatelessWidget {
+class FoundWords extends StatefulWidget {
   final List<String> foundWords;
   final Board board;
   FoundWords({Key? key, required this.foundWords, required this.board})
       : super(key: key);
+
+  @override
+  _FoundWordsState createState() => _FoundWordsState();
+}
+
+class _FoundWordsState extends State<FoundWords> {
+  bool expanded = false;
+
+  void _expansionChanged(bool newValue) {
+    setState(() {
+      expanded = newValue;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -150,18 +163,34 @@ class FoundWords extends StatelessWidget {
       return "${string[0].toUpperCase()}${string.substring(1)}";
     }
 
-    foundWords.sort(); // Does this sort the caller's list too?
+    widget.foundWords.sort(); // Does this sort the caller's list too?
+    List<String> capitalizedWords = widget.foundWords.map(capitalize).toList();
 
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: Colors.lightBlue.shade200,
-        ),
-        borderRadius: BorderRadius.circular(5),
-      ),
-      constraints: BoxConstraints(minWidth: 200, minHeight: 100),
-      child: Text(
-          "Found ${foundWords.length} of ${board.validWords.length}:\n${foundWords.map(capitalize).join('\n')}"),
+    return ExpansionTileCard(
+      title: expanded
+          ? Text("Found")
+          : Text(capitalizedWords.join(", "), overflow: TextOverflow.ellipsis),
+      onExpansionChanged: _expansionChanged,
+      subtitle: expanded
+          ? null
+          : Align(
+              alignment: Alignment.bottomRight,
+              child: Text(
+                "${widget.foundWords.length} of ${widget.board.validWords.length}",
+                style: TextStyle(fontSize: 10),
+              ),
+            ),
+      children: <Widget>[
+        Divider(thickness: 1.0, height: 1.0),
+        SizedBox(
+          height: 200,
+          child: ListView(
+            children: capitalizedWords
+                .map((word) => ListTile(title: Text(word)))
+                .toList(),
+          ),
+        )
+      ],
     );
   }
 }
