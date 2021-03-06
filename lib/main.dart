@@ -1,17 +1,11 @@
-import 'dart:math';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:pangram/manifest.dart';
 
 import 'board.dart';
-
-// A, B, C, D, E, F, G
-
-// List of possible answers.S
-
-// Some way to input leters
-// Some way to list which words they've found.
 
 void main() {
   final Server server = Server();
@@ -29,7 +23,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.amber,
       ),
-      home: MyHomePage(title: 'Pangram', server: server),
+      home: MainPage(title: 'Pangram', server: server),
     );
   }
 }
@@ -151,6 +145,10 @@ class FoundWords extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    String capitalize(String string) {
+      return "${string[0].toUpperCase()}${string.substring(1)}";
+    }
+
     return Container(
       decoration: BoxDecoration(
         border: Border.all(
@@ -158,10 +156,9 @@ class FoundWords extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(5),
       ),
-      padding: EdgeInsets.all(10),
       constraints: BoxConstraints(minWidth: 200, minHeight: 100),
       child: Text(
-          "Found ${foundWords.length} of ${board.validWords.length}:\n${foundWords.join('\n')}"),
+          "Found ${foundWords.length} of ${board.validWords.length}:\n${foundWords.map(capitalize).join('\n')}"),
     );
   }
 }
@@ -176,6 +173,41 @@ class PangramGame extends StatefulWidget {
 
   @override
   _PangramGameState createState() => _PangramGameState();
+}
+
+class Score extends StatelessWidget {
+  final List<String> foundWords;
+  Score({required this.foundWords});
+
+  int scoreForWord(String word) {
+    // Quoting http://varianceexplained.org/r/honeycomb-puzzle/
+    // Four-letter words are worth 1 point each, while five-letter words are
+    // worth 5 points, six-letter words are worth 6 points, seven-letter words
+    // are worth 7 points, etc. Words that use all of the seven letters in the
+    // honeycomb are known as “pangrams” and earn 7 bonus points (in addition
+    // to the points for the length of the word). So in the above example,
+    // MEGAPLEX is worth 15 points.
+
+    int length = word.length;
+    if (length < 4) {
+      throw ArgumentError("Only know how to score words above 4 letters");
+    }
+
+    if (length == 4) return 1;
+    int uniqueLetterCount = Set.from(word.split('')).length;
+    // Assuming reasonable inputs (not checking for > 7).
+    int pangramBonus = (uniqueLetterCount == 7) ? 7 : 0;
+    return pangramBonus + length;
+  }
+
+  int computeScore(List<String> words) {
+    return words.fold(0, (sum, word) => sum + scoreForWord(word));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Text("Score: ${computeScore(foundWords)}");
+  }
 }
 
 class _PangramGameState extends State<PangramGame> {
@@ -253,19 +285,27 @@ class _PangramGameState extends State<PangramGame> {
     }
     return Column(
       children: [
+        Score(foundWords: foundWords),
         FoundWords(foundWords: foundWords, board: widget.board),
-        Text(typedWord),
+        SizedBox(height: 20),
+        Text(typedWord.toUpperCase()),
+        SizedBox(height: 20),
         CustomMultiChildLayout(delegate: PangramLayout(), children: children),
+        SizedBox(height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ElevatedButton(
-                onPressed: typedWord == "" ? null : deletePressed,
-                child: Text("DELETE")),
-            ElevatedButton(
-                onPressed: typedWord == "" ? null : enterPressed,
-                child: Text("ENTER")),
+              onPressed: typedWord == "" ? null : deletePressed,
+              child: Text("DELETE"),
+            ),
+            SizedBox(width: 20),
             ElevatedButton(onPressed: scramblePressed, child: Text("SCRAMBLE")),
+            SizedBox(width: 20),
+            ElevatedButton(
+              onPressed: typedWord == "" ? null : enterPressed,
+              child: Text("ENTER"),
+            ),
           ],
         ),
       ],
@@ -273,37 +313,47 @@ class _PangramGameState extends State<PangramGame> {
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  MyHomePage({Key? key, this.title, required this.server}) : super(key: key);
+class MainPage extends StatefulWidget {
+  MainPage({Key? key, this.title, required this.server}) : super(key: key);
   final String? title;
   final Server server;
 
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _MainPageState createState() => _MainPageState();
 }
 
 class Server {
-  List<Board>? _cachedBoards;
+  Manifest? _cachedManifest;
+  static const String boardsDirectory = 'boards';
 
-  Future<List<Board>> ensureBoards() async {
-    if (_cachedBoards != null) return Future.value(_cachedBoards);
-    http.Response response = await http.get(Uri.parse("boards.json"));
-    var jsonBoards = json.decode(response.body);
-    var inflatedBoards =
-        jsonBoards.map<Board>((json) => Board.fromJson(json)).toList();
-    _cachedBoards = inflatedBoards;
-    print("Loaded ${inflatedBoards.length} boards.");
-    return inflatedBoards;
+  Future<dynamic> _fetchJson(String url) async {
+    print("Loading $url");
+    http.Response response = await http.get(Uri.parse(url));
+    return json.decode(response.body);
+  }
+
+  Future<Manifest> ensureManifest() async {
+    if (_cachedManifest != null) return Future.value(_cachedManifest);
+    var jsonManifest = await _fetchJson("$boardsDirectory/manifest.json");
+    Manifest manifest = Manifest.fromJson(jsonManifest);
+    _cachedManifest = manifest;
+    return manifest;
   }
 
   Future<Board> nextBoard() async {
-    var boards = await ensureBoards();
-    int boardIndex = Random().nextInt(boards.length);
-    return boards[boardIndex];
+    Manifest manifest = await ensureManifest();
+    int boardIndex = Random().nextInt(manifest.totalBoards);
+    int chunkIndex = boardIndex ~/ manifest.chunkSize;
+    String chunkName = manifest.chunkNameFromIndex(chunkIndex);
+    List<dynamic> chunkJson = await _fetchJson("$boardsDirectory/$chunkName");
+    List<Board> chunk =
+        chunkJson.map((boardJson) => Board.fromJson(boardJson)).toList();
+    int chunkLocalBoardIndex = boardIndex % manifest.chunkSize;
+    return chunk[chunkLocalBoardIndex];
   }
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MainPageState extends State<MainPage> {
   Board? _board;
 
   // TODO: This belongs outside of this widget.

@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:pangram/main.dart';
 import 'package:pangram/board.dart';
+import 'package:pangram/manifest.dart';
 
 class MockServer implements Server {
   @override
@@ -19,8 +20,8 @@ class MockServer implements Server {
   }
 
   @override
-  Future<List<Board>> ensureBoards() {
-    // TODO: implement ensureBoards
+  Future<Manifest> ensureManifest() {
+    // TODO: implement ensureManifest
     throw UnimplementedError();
   }
 }

@@ -26,11 +26,13 @@ dependencies:
   http: ^0.13.0
   cupertino_icons: ^1.0.2
   json_serializable: ^4.0.2
+  intl: ^0.17.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   build_runner: any
+  test: ^1.16.5
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

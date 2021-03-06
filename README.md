@@ -5,9 +5,7 @@ Published at: https://pangram-ce21c.web.app/#/
 
 Known issues:
 * Missing words (e.g. warf)
-* No shuffle key
 * Only 10 boards
-* No backspace
 * Doesn't tell difference between known word vs. missing center.
 * Layout breaks with too many words
 * Should save state in local storage (which board you're on, words you've found) -- reload throws away all your work.
@@ -18,6 +16,7 @@ Visual issues
 * Buttons should be more tactile (material splash, etc.)
 * Enter key is too close.
 * Should look different on tablet vs. phone.
+* Needs a text field for when using a keyboard. (Hexegons should still press when typing from keyboard?)
 
 Features
 * Social, High-score, share link.  "beat your friend"
