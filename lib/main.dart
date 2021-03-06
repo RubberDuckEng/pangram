@@ -149,6 +149,8 @@ class FoundWords extends StatelessWidget {
       return "${string[0].toUpperCase()}${string.substring(1)}";
     }
 
+    foundWords.sort(); // Does this sort the caller's list too?
+
     return Container(
       decoration: BoxDecoration(
         border: Border.all(
@@ -173,6 +175,60 @@ class PangramGame extends StatefulWidget {
 
   @override
   _PangramGameState createState() => _PangramGameState();
+}
+
+class Breakdown extends StatelessWidget {
+  final List<String> validWords;
+  final List<String> foundWords;
+  Breakdown(this.validWords, this.foundWords);
+
+  @override
+  Widget build(BuildContext context) {
+    // Iterate over word lengths.  List X of X.
+    Map<int, int> validCounts = <int, int>{};
+    for (String word in validWords) {
+      int count = validCounts[word.length] ?? 0;
+      validCounts[word.length] = count + 1;
+    }
+    Map<int, int> foundCounts = <int, int>{};
+    for (String word in foundWords) {
+      int count = foundCounts[word.length] ?? 0;
+      foundCounts[word.length] = count + 1;
+    }
+
+    List<int> lengths = validCounts.keys.toList();
+    lengths.sort();
+
+    return Column(
+      children: [
+        for (int length in lengths)
+          Text(
+              "$length : ${foundCounts[length] ?? 0} of ${validCounts[length]}")
+      ],
+    );
+  }
+}
+
+class Difficulty extends StatelessWidget {
+  final double? difficultyPercentile;
+  Difficulty(this.difficultyPercentile);
+
+  String difficultyText(double percentile) {
+    if (percentile < 0.05) return "Very Easy";
+    if (percentile < 0.15) return "Easy";
+    if (percentile < 0.25) return "Medium";
+    if (percentile < 0.50) return "Hard";
+    return "Insane!";
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (difficultyPercentile == null) return Text("Difficulty: Unknown");
+    // FIXME: Why is this needed?  Null safety should see the early return above?
+    double percentile = difficultyPercentile ?? 0.0;
+    return Text(
+        "Difficulty: ${difficultyText(percentile)} (${(100 * percentile).toInt()}%)");
+  }
 }
 
 class Score extends StatelessWidget {
@@ -285,7 +341,12 @@ class _PangramGameState extends State<PangramGame> {
     }
     return Column(
       children: [
+        Difficulty(widget.board.difficultyPercentile),
+        SizedBox(height: 10),
+        Breakdown(widget.board.validWords, foundWords),
+        SizedBox(height: 10),
         Score(foundWords: foundWords),
+        SizedBox(height: 10),
         FoundWords(foundWords: foundWords, board: widget.board),
         SizedBox(height: 20),
         Text(typedWord.toUpperCase()),

@@ -23,6 +23,7 @@ Published at: https://pangram-ce21c.web.app/#/
 * Needs a text field for when using a keyboard. (Hexegons should still press when typing from keyboard?)
 
 ## Features
+* Should tell how "hard" a word is (frequency?) Frequency data: https://en.lexipedia.org/download.php?freq=1&range=4+-+28
 * Social, High-score, share link.  "beat your friend"
 * Share a board on twitter.
 * Add Analytics (firebase_analytics is not yet null-safe)

@@ -14,6 +14,31 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:pangram/board.dart';
 import 'package:pangram/manifest.dart';
+import 'package:path/path.dart' as p;
+
+class DiskCache {
+  Directory cacheDirectory;
+  DiskCache(this.cacheDirectory);
+
+  File _cacheFileForRemoteUri(Uri remoteUri) {
+    String cacheName = remoteUri.pathSegments.last;
+    String cachedPath = p.join(cacheDirectory.path, cacheName);
+    return File(cachedPath);
+  }
+
+  Future<File> ensureCached(Uri remoteUri) async {
+    File cacheFile = _cacheFileForRemoteUri(remoteUri);
+    if (await cacheFile.exists()) {
+      return cacheFile;
+    }
+
+    print("Downloading $remoteUri to ${cacheFile.path}");
+    http.Response response = await http.get(remoteUri);
+    await cacheFile.create(recursive: true);
+    await cacheFile.writeAsBytes(response.bodyBytes);
+    return cacheFile;
+  }
+}
 
 class LetterCluster {
   String letters;
@@ -71,35 +96,71 @@ class WordList {
   }
 }
 
-class Server {
-  WordList wordList;
-  Server(this.wordList);
-
-  Future<List<Board>> allBoards() async {
-    // Reads the all-boards cache and returns if exist.
-    // Otherwise generates from word list.
-    List<Board> allBoards = [];
-    List<LetterCluster> clusters = wordList.letterClusters;
-    clusters.sort((a, b) => a.letters.compareTo(b.letters));
-    for (LetterCluster cluster in clusters) {
-      for (String center in cluster.letterSet) {
-        allBoards.add(Board(
-          center: center,
-          otherLetters:
-              cluster.letterSet.where((letter) => letter != center).toList(),
-          validWords:
-              cluster.words.where((word) => word.contains(center)).toList(),
-        ));
-      }
-    }
-    return Future.value(allBoards);
+class DifficultyRater {
+  // FIXME: Tune hardness approximation.
+  // 10 = very hard (rarest 25% or not found)
+  // 5 = hard (rarest 50%)
+  // 3 = medium (rarest 75%)
+  // 1 = easy
+  int rarityScore(double rarityPercent) {
+    if (rarityPercent < 0.25) return 1;
+    if (rarityPercent < 0.5) return 3;
+    if (rarityPercent < 0.75) return 5;
+    return 10;
   }
 }
 
-Future<List<String>> loadWordList(Uri uri) async {
-  http.Response response = await http.get(uri);
-  String wordsString = response.body;
-  return wordsString.split("\n");
+class BoardGenerator {
+  WordList wordList;
+  WordFrequencies frequencies;
+  BoardGenerator(this.wordList, this.frequencies);
+
+  List<Board> generateBoards() {
+    DifficultyRater rater = DifficultyRater();
+    // Reads the all-boards cache and returns if exist.
+    // Otherwise generates from word list.
+    List<Board> allBoards = [];
+    int maxDifficulty = 0;
+    List<LetterCluster> clusters = wordList.letterClusters;
+    clusters.sort((a, b) => a.letters.compareTo(b.letters));
+
+    for (LetterCluster cluster in clusters) {
+      for (String center in cluster.letterSet) {
+        List<String> validWords =
+            cluster.words.where((word) => word.contains(center)).toList();
+
+        // FIXME: This lookup should be done at Cluster construction time
+        // rather than at least 7x as common during *board* construction.
+        int difficulty = validWords.fold(
+            0,
+            (previous, word) =>
+                previous +
+                rater.rarityScore(frequencies.rarityPercentile(word)));
+        if (difficulty > maxDifficulty) maxDifficulty = difficulty;
+
+        allBoards.add(
+          Board(
+            center: center,
+            otherLetters:
+                cluster.letterSet.where((letter) => letter != center).toList(),
+            validWords: validWords,
+            difficultyScore: difficulty,
+          ),
+        );
+      }
+    }
+
+    // Normalize difficulty scores:
+    print("Normalizing board difficulties from max $maxDifficulty");
+    // FIXME: Max is 11790!? So presumably this should be weighted somehow?
+    // Or outlier boards e.g. exceptionally large numbers of words, should
+    // just be discarded?
+    for (Board board in allBoards) {
+      board.difficultyPercentile = board.difficultyScore / maxDifficulty;
+    }
+
+    return allBoards;
+  }
 }
 
 List<List<T>> chunkList<T>(List<T> list, int chunkSize) {
@@ -113,11 +174,67 @@ List<List<T>> chunkList<T>(List<T> list, int chunkSize) {
   return chunks;
 }
 
+class WordFrequencies {
+  Map<String, int> wordToFrequency = <String, int>{};
+  int maxFrequency = 0;
+  int minFrequency = 999999999999;
+
+  WordFrequencies(List<String> lines) {
+    for (String line in lines) {
+      // Format: word length frequency article_count
+      List<String> parts = line.split(" ");
+      String word = parts[0];
+      int frequency = int.parse(parts[2]);
+      wordToFrequency[word] = frequency;
+      if (frequency > maxFrequency) maxFrequency = frequency;
+      if (frequency < minFrequency) minFrequency = frequency;
+    }
+  }
+
+  double rarityPercentile(String word) {
+    // FIXME: Should this use minFrequency somewhere?
+    int frequency = wordToFrequency[word] ?? 0;
+    return 1.0 - (frequency / maxFrequency);
+  }
+}
+
+void printLongestWords(WordList wordList) {
+  int longestWordLength = wordList.legalWords.fold(
+      0,
+      (previous, element) =>
+          previous > element.length ? previous : element.length);
+  print("Longest word length: $longestWordLength");
+  List<String> longestWords = [];
+  for (String word in wordList.legalWords) {
+    if (word.length > 15) {
+      longestWords.add(word);
+    }
+  }
+  print(longestWords);
+}
+
 void main() async {
+  final Directory cacheDirectory = Directory(".cache");
   final Uri wordListUri = Uri.parse("https://norvig.com/ngrams/enable1.txt");
-  WordList wordList = WordList(await loadWordList(wordListUri));
-  Server server = Server(wordList);
-  List<Board> boards = await server.allBoards();
+  // This only includes 4-28, since 28 is the largest legal word in the norvig sample.
+  // This is about 50 mb.
+  // Format: word length frequency article_count
+  final Uri wordsByFrequencyUri =
+      Uri.parse("https://en.lexipedia.org/download.php?freq=1&range=4+-+28");
+
+  DiskCache cache = DiskCache(cacheDirectory);
+
+  File wordListFile = await cache.ensureCached(wordListUri);
+  List<String> words = await wordListFile.readAsLines();
+  WordList wordList = WordList(words);
+  // return printLongestWords(wordList);
+
+  File frequencyFile = await cache.ensureCached(wordsByFrequencyUri);
+  WordFrequencies frequencies =
+      WordFrequencies(await frequencyFile.readAsLines());
+
+  BoardGenerator boardGenerator = BoardGenerator(wordList, frequencies);
+  List<Board> boards = boardGenerator.generateBoards();
 
   const String directory = 'web/boards';
   const String prefix = 'boards';

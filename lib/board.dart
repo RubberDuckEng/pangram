@@ -8,10 +8,17 @@ class Board {
   final List<String> otherLetters;
   final List<String> validWords;
 
-  Board(
-      {required this.center,
-      required this.otherLetters,
-      required this.validWords}) {
+  // FIXME: Only used during construction, probably should not be here?
+  final int difficultyScore;
+
+  double? difficultyPercentile;
+
+  Board({
+    required this.center,
+    required this.otherLetters,
+    required this.validWords,
+    this.difficultyScore = 0,
+  }) {
     // Not sure if modifying the passed letter List is safe?
     otherLetters.sort();
   }
