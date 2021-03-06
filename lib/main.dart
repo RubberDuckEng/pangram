@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pangram/manifest.dart';
+import 'package:expansion_tile_card/expansion_tile_card.dart';
 
 import 'board.dart';
 
@@ -180,7 +181,7 @@ class PangramGame extends StatefulWidget {
 class Breakdown extends StatelessWidget {
   final List<String> validWords;
   final List<String> foundWords;
-  Breakdown(this.validWords, this.foundWords);
+  Breakdown({required this.validWords, required this.foundWords});
 
   @override
   Widget build(BuildContext context) {
@@ -266,6 +267,31 @@ class Score extends StatelessWidget {
   }
 }
 
+class Progress extends StatefulWidget {
+  final List<String> validWords;
+  final List<String> foundWords;
+  Progress({required this.validWords, required this.foundWords});
+
+  @override
+  _ProgressState createState() => _ProgressState();
+}
+
+class _ProgressState extends State<Progress> {
+  @override
+  Widget build(BuildContext context) {
+    return ExpansionTileCard(
+      title: Score(foundWords: widget.foundWords),
+      children: <Widget>[
+        Divider(thickness: 1.0, height: 1.0),
+        Breakdown(
+          validWords: widget.validWords,
+          foundWords: widget.foundWords,
+        )
+      ],
+    );
+  }
+}
+
 class _PangramGameState extends State<PangramGame> {
   String typedWord = "";
   List<int> otherLettersOrder = List<int>.generate(6, (i) => i);
@@ -346,37 +372,41 @@ class _PangramGameState extends State<PangramGame> {
             isCenter: false,
           )));
     }
-    return Column(
-      children: [
-        Difficulty(widget.board.difficultyPercentile),
-        SizedBox(height: 10),
-        Breakdown(widget.board.validWords, foundWords),
-        SizedBox(height: 10),
-        Score(foundWords: foundWords),
-        SizedBox(height: 10),
-        FoundWords(foundWords: foundWords, board: widget.board),
-        SizedBox(height: 20),
-        Text(typedWord.toUpperCase()),
-        SizedBox(height: 20),
-        CustomMultiChildLayout(delegate: PangramLayout(), children: children),
-        SizedBox(height: 20),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              onPressed: typedWord == "" ? null : deletePressed,
-              child: Text("DELETE"),
-            ),
-            SizedBox(width: 20),
-            ElevatedButton(onPressed: scramblePressed, child: Text("SCRAMBLE")),
-            SizedBox(width: 20),
-            ElevatedButton(
-              onPressed: typedWord == "" ? null : enterPressed,
-              child: Text("ENTER"),
-            ),
-          ],
-        ),
-      ],
+    return SizedBox(
+      // FIXME: This sized box is a hack to make things not expand too wide.
+      width: 300,
+      child: Column(
+        children: [
+          Difficulty(widget.board.difficultyPercentile),
+          SizedBox(height: 10),
+          // TODO(eseidel): SizedBox is a hack!
+          Progress(validWords: widget.board.validWords, foundWords: foundWords),
+          SizedBox(height: 10),
+          FoundWords(foundWords: foundWords, board: widget.board),
+          SizedBox(height: 20),
+          Text(typedWord.toUpperCase()),
+          SizedBox(height: 20),
+          CustomMultiChildLayout(delegate: PangramLayout(), children: children),
+          SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton(
+                onPressed: typedWord == "" ? null : deletePressed,
+                child: Text("DELETE"),
+              ),
+              SizedBox(width: 20),
+              ElevatedButton(
+                  onPressed: scramblePressed, child: Text("SCRAMBLE")),
+              SizedBox(width: 20),
+              ElevatedButton(
+                onPressed: typedWord == "" ? null : enterPressed,
+                child: Text("ENTER"),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
