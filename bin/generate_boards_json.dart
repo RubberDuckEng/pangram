@@ -58,6 +58,8 @@ class WordList {
 
   static bool isLegalWord(String word) {
     // Also exclude words with S in them?
+    // https://nytbee.com/ suggests S is not allowed.
+    // https://nytbee.com/ suggests NYT never goes above 80 words!
     return word.length >= 4;
   }
 
