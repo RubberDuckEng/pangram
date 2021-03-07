@@ -85,6 +85,8 @@ class WordList {
       // Could have cached this from first walk.
       List<String> wordLetters = word.split("");
       for (LetterCluster cluster in clusters) {
+        // 63% of time is spent in containsAll
+        // Perhaps a walk of two sorted strings would be faster?
         if (cluster.letterSet.containsAll(wordLetters)) {
           cluster.words.add(word);
         }
