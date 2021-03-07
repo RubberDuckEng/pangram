@@ -3,9 +3,17 @@
 # Files and directories created by pub
 .dart_tool/
 .packages
+
+# Created by bin/generate_boards_json.dart
 .cache/
-build/
 web/boards/
+
+# Created by firebase tools.
+.firebase/
+
+.flutter-plugins*
+
+build/
 # If you're building an application, you may want to check-in your pubspec.lock
 pubspec.lock
 
