@@ -5,6 +5,7 @@ import 'package:expansion_tile_card/expansion_tile_card.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import 'pangram.dart';
 import 'board.dart';
 import 'game_state.dart';
 import 'manifest.dart';
@@ -28,115 +29,6 @@ class MyApp extends StatelessWidget {
       home: MainPage(title: 'Pangram', server: server),
     );
   }
-}
-
-class HexagonPainter extends CustomPainter {
-  final Color color;
-  Path? _lastDrawnPath;
-
-  HexagonPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    var radius = size.shortestSide / 2.0;
-    var center = size.center(Offset.zero);
-
-    const angleIncrement = pi / 3.0;
-    const count = 6;
-    List<Offset> points = [];
-    for (int i = 0; i < count; ++i) {
-      var angle = i * angleIncrement;
-      points.add(center + Offset(cos(angle), sin(angle)) * radius);
-    }
-
-    var path = Path();
-    path.addPolygon(points, true);
-    var paint = Paint();
-    paint.color = color;
-    canvas.drawPath(path, paint);
-
-    _lastDrawnPath = path;
-  }
-
-  @override
-  bool? hitTest(Offset position) {
-    return _lastDrawnPath?.contains(position);
-  }
-
-  @override
-  bool shouldRepaint(covariant HexagonPainter oldDelegate) {
-    return oldDelegate.color != color;
-  }
-}
-
-class PangramTile extends StatelessWidget {
-  final String letter;
-  final bool isCenter;
-  final ValueChanged<String> onPressed;
-
-  PangramTile(
-      {Key? key,
-      required this.letter,
-      required this.onPressed,
-      required this.isCenter})
-      : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    Color color =
-        isCenter ? Colors.deepOrange.shade500 : Colors.yellow.shade800;
-    return GestureDetector(
-      onTap: () {
-        onPressed(letter);
-      },
-      child: Stack(alignment: AlignmentDirectional.center, children: [
-        SizedBox(
-          height: 75.0,
-          width: 75.0,
-          child: CustomPaint(painter: HexagonPainter(color: color)),
-        ),
-        Text(letter.toUpperCase(), style: TextStyle(fontSize: 24)),
-      ]),
-    );
-  }
-}
-
-enum _PangramSlot {
-  center,
-  first,
-  second,
-  third,
-  fourth,
-  fifth,
-  sixth,
-}
-
-class PangramLayout extends MultiChildLayoutDelegate {
-  @override
-  void performLayout(Size size) {
-    var centerSize =
-        layoutChild(_PangramSlot.center, BoxConstraints.loose(size));
-    positionChild(_PangramSlot.center,
-        size.center(Offset.zero) - centerSize.center(Offset.zero));
-
-    var radius = size.shortestSide / 3.0;
-    const angleIncrement = pi / 3.0;
-    const satelliteCount = 6;
-    for (int i = 0; i < satelliteCount; ++i) {
-      var slot = _PangramSlot.values[i + 1]; // The center slot is index 0.
-      var satelliteSize = layoutChild(slot, BoxConstraints.loose(size));
-      var angle = i * angleIncrement + pi / 6.0;
-      var satelliteOffset = size.center(Offset.zero) +
-          Offset(cos(angle), sin(angle)) * radius -
-          satelliteSize.center(Offset.zero);
-      positionChild(slot, satelliteOffset);
-    }
-  }
-
-  Size getSize(BoxConstraints constraints) => Size(200, 200);
-
-  @override
-  bool shouldRelayout(covariant MultiChildLayoutDelegate oldDelegate) => false;
 }
 
 class FoundWords extends StatefulWidget {
@@ -385,27 +277,17 @@ class _PangramGameState extends State<PangramGame> {
     }
   }
 
+  List<String> scrambledOtherLetters() {
+    List<String> otherLetters = widget.game.board.otherLetters;
+    List<String> scrambledLetters = <String>[];
+    for (int i = 0; i < otherLetters.length; i++) {
+      scrambledLetters.add(otherLetters[otherLettersOrder[i]]);
+    }
+    return scrambledLetters;
+  }
+
   @override
   Widget build(BuildContext context) {
-    var children = [
-      LayoutId(
-          id: _PangramSlot.center,
-          child: PangramTile(
-            letter: widget.game.board.center,
-            onPressed: typeLetter,
-            isCenter: true,
-          ))
-    ];
-    for (var i = 0; i < widget.game.board.otherLetters.length; ++i) {
-      var letter = widget.game.board.otherLetters[otherLettersOrder[i]];
-      children.add(LayoutId(
-          id: _PangramSlot.values[i + 1],
-          child: PangramTile(
-            letter: letter,
-            onPressed: typeLetter,
-            isCenter: false,
-          )));
-    }
     return SizedBox(
       // FIXME: This sized box is a hack to make things not expand too wide.
       width: 300,
@@ -426,7 +308,11 @@ class _PangramGameState extends State<PangramGame> {
           SizedBox(height: 20),
           Text(typedWord.toUpperCase()),
           SizedBox(height: 20),
-          CustomMultiChildLayout(delegate: PangramLayout(), children: children),
+          PangramButtons(
+            center: widget.game.board.center,
+            otherLetters: scrambledOtherLetters(),
+            typeLetter: typeLetter,
+          ),
           SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,

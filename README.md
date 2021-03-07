@@ -16,6 +16,7 @@ https://nytbee.com/ has lots of notes on how the NYT does this.
 # Known issues
 * Missing words (e.g. warf)
 * Should put the board in the URL (so you can link to a board). (What is firebase's memcache?  Server should boot, self-populate.)
+* Firebase automated deploy on checkin fails every time.
 
 ## Visual issues
 * Needs visual design
