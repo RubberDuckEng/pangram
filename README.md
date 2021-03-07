@@ -11,9 +11,10 @@ Published at: https://pangram-ce21c.web.app/#/
 
 `.cache` is populated with word lists pulled from the web and can be safely deleted.
 
+https://nytbee.com/ has lots of notes on how the NYT does this.
+
 # Known issues
 * Missing words (e.g. warf)
-* Should save state in local storage (which board you're on, words you've found) -- reload throws away all your work.
 * Should put the board in the URL (so you can link to a board). (What is firebase's memcache?  Server should boot, self-populate.)
 
 ## Visual issues
@@ -26,3 +27,5 @@ Published at: https://pangram-ce21c.web.app/#/
 * Social, High-score, share link.  "beat your friend"
 * Share a board on twitter.
 * Add Analytics (firebase_analytics is not yet null-safe)
+* Need progress towards max score.
+* Analysis like https://nytbee.com/ has!

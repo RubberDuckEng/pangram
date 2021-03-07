@@ -29,6 +29,7 @@ dependencies:
   intl: ^0.17.0
   path: ^1.8.0
   expansion_tile_card: ^2.0.0
+  shared_preferences: ^2.0.3
 
 dev_dependencies:
   flutter_test:

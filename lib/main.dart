@@ -1,12 +1,13 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:expansion_tile_card/expansion_tile_card.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:pangram/manifest.dart';
-import 'package:expansion_tile_card/expansion_tile_card.dart';
 
 import 'board.dart';
+import 'game_state.dart';
+import 'manifest.dart';
 
 void main() {
   final Server server = Server();
@@ -196,12 +197,12 @@ class _FoundWordsState extends State<FoundWords> {
 }
 
 class PangramGame extends StatefulWidget {
-  final Board board;
+  final GameState game;
   final VoidCallback onWin;
 
-  PangramGame({required this.board, required this.onWin})
-      // Make the board Key so when the board changes State is dropped.
-      : super(key: ObjectKey(board));
+  PangramGame({required this.game, required this.onWin})
+      // Make the board Key so when the game changes State is dropped.
+      : super(key: ObjectKey(game));
 
   @override
   _PangramGameState createState() => _PangramGameState();
@@ -325,9 +326,6 @@ class _PangramGameState extends State<PangramGame> {
   String typedWord = "";
   List<int> otherLettersOrder = List<int>.generate(6, (i) => i);
 
-  // TODO: This is really business logic state rather than UI state.
-  List<String> foundWords = <String>[];
-
   void typeLetter(String letter) {
     setState(() {
       typedWord += letter;
@@ -347,20 +345,25 @@ class _PangramGameState extends State<PangramGame> {
   }
 
   String? _validateGuessedWord(String guessedWord) {
-    if (foundWords.contains(guessedWord)) {
+    if (guessedWord.length < 4) {
+      return 'Words must be at least 4 letters.';
+    }
+
+    if (widget.game.foundWords.contains(guessedWord)) {
       return 'Already found "$guessedWord"';
     }
 
-    if (!guessedWord.contains(widget.board.center)) {
-      return '"$guessedWord" does not contain the center letter "${widget.board.center}"';
+    if (!guessedWord.contains(widget.game.board.center)) {
+      return '"$guessedWord" does not contain the center letter "${widget.game.board.center}"';
     }
 
-    if (!widget.board.validWords.contains(guessedWord)) {
+    if (!widget.game.board.validWords.contains(guessedWord)) {
       return '"$guessedWord" is not a valid word';
     }
     return null;
   }
 
+  // TODO: This likely belongs outside of this object.
   void enterPressed() {
     setState(() {
       var guessedWord = typedWord;
@@ -372,10 +375,12 @@ class _PangramGameState extends State<PangramGame> {
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
         return;
       }
-      foundWords.add(guessedWord);
+      // TODO(eseidel): Having to manually call save here doesn't seem right.
+      widget.game.foundWords.add(guessedWord);
+      widget.game.save();
     });
 
-    if (foundWords.length == widget.board.validWords.length) {
+    if (widget.game.foundWords.length == widget.game.board.validWords.length) {
       widget.onWin();
     }
   }
@@ -386,13 +391,13 @@ class _PangramGameState extends State<PangramGame> {
       LayoutId(
           id: _PangramSlot.center,
           child: PangramTile(
-            letter: widget.board.center,
+            letter: widget.game.board.center,
             onPressed: typeLetter,
             isCenter: true,
           ))
     ];
-    for (var i = 0; i < widget.board.otherLetters.length; ++i) {
-      var letter = widget.board.otherLetters[otherLettersOrder[i]];
+    for (var i = 0; i < widget.game.board.otherLetters.length; ++i) {
+      var letter = widget.game.board.otherLetters[otherLettersOrder[i]];
       children.add(LayoutId(
           id: _PangramSlot.values[i + 1],
           child: PangramTile(
@@ -406,12 +411,18 @@ class _PangramGameState extends State<PangramGame> {
       width: 300,
       child: Column(
         children: [
-          Difficulty(widget.board.difficultyPercentile),
+          Difficulty(widget.game.board.difficultyPercentile),
           SizedBox(height: 10),
           // TODO(eseidel): SizedBox is a hack!
-          Progress(validWords: widget.board.validWords, foundWords: foundWords),
+          Progress(
+            validWords: widget.game.board.validWords,
+            foundWords: widget.game.foundWords,
+          ),
           SizedBox(height: 10),
-          FoundWords(foundWords: foundWords, board: widget.board),
+          FoundWords(
+            foundWords: widget.game.foundWords,
+            board: widget.game.board,
+          ),
           SizedBox(height: 20),
           Text(typedWord.toUpperCase()),
           SizedBox(height: 20),
@@ -481,56 +492,63 @@ class Server {
 }
 
 class _MainPageState extends State<MainPage> {
-  Board? _board;
+  GameState? _game;
 
   // TODO: This belongs outside of this widget.
   @override
   void initState() {
     super.initState();
-    getNextBoard();
+    initialLoad();
+  }
+
+  Future initialLoad() async {
+    print("initialLoad");
+    GameState? savedGame = await GameState.loadSaved();
+    if (savedGame == null) {
+      getNextBoard();
+      return;
+    }
+
+    setState(() {
+      _game = savedGame;
+    });
   }
 
   Future getNextBoard() async {
+    print("getNextBoard");
     Board board = await widget.server.nextBoard();
     if (!mounted) {
       return;
     }
     setState(() {
-      _board = board;
+      GameState newGame = GameState(board);
+      _game = newGame;
+      newGame.save();
     });
   }
 
   void onWin() {
-    if (_board == null) {
+    if (_game == null) {
       return;
     }
 
     final snackBar = SnackBar(content: Text('A winner is you 🎉'));
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
-
-    setState(() {
-      _board = null;
-    });
-    getNextBoard();
   }
 
   void onNextGame() {
-    if (_board == null) {
-      return;
-    }
-
     setState(() {
-      _board = null;
+      _game = null;
     });
     getNextBoard();
   }
 
   @override
   Widget build(BuildContext context) {
-    Board? board = _board;
-    var body = (board == null)
+    GameState? game = _game;
+    var body = (game == null)
         ? Text("Loading...")
-        : PangramGame(board: board, onWin: onWin);
+        : PangramGame(game: game, onWin: onWin);
 
     return Scaffold(
       appBar: AppBar(
