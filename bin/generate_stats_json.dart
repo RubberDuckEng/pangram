@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 import 'package:pangram/board.dart';
 import 'package:pangram/manifest.dart';
+import 'package:pangram/utils.dart';
 
 class CountedSet<T> {
   final Map<T, int> counts = <T, int>{};
@@ -55,6 +56,68 @@ class WordCount {
   WordCount(this.word, this.count);
 }
 
+void printTopN(CountedSet counts, int topNCount) {
+  List<WordCount> wordCounts = counts.counts.entries
+      .map((entry) => WordCount(entry.key, entry.value))
+      .toList();
+  wordCounts.sort((a, b) => -a.count.compareTo(b.count));
+  wordCounts = wordCounts.sublist(0, topNCount);
+  for (var count in wordCounts) {
+    print("${count.word} : ${count.count}");
+  }
+}
+
+void printLetterFrequency(CountedSet letterCounts) {
+  List<WordCount> wordCounts = letterCounts.counts.entries
+      .map((entry) => WordCount(entry.key, entry.value))
+      .toList();
+  wordCounts.sort((a, b) => a.word.compareTo(b.word));
+  int totalCount = wordCounts.fold(0, (sum, count) => sum + count.count);
+  for (var count in wordCounts) {
+    var percent = (count.count / totalCount * 100).toStringAsFixed(2);
+    print("${count.word} $percent%");
+  }
+}
+
+class Bucket {
+  final int first;
+  final int last;
+  final int sum;
+
+  Bucket({required this.first, required this.last, required this.sum});
+}
+
+// Should this merge with WordCount?
+class IntCount {
+  final int value;
+  final int count;
+  IntCount({required this.value, required this.count});
+}
+
+Iterable<Bucket> bucketCounts(
+    {required CountedSet data, required int bucketSize}) {
+  List<IntCount> counts = data.counts.entries
+      .map((entry) => IntCount(value: entry.key, count: entry.value))
+      .toList();
+  counts.sort((a, b) => a.value.compareTo(b.value));
+
+  // TODO: This won't work as expected with sparse data.
+  // Instead of bucket "0-50", it might "0-63" if 13 items under 50 are missing.
+  return chunkList(counts, bucketSize).map((var chunk) {
+    return Bucket(
+      first: chunk.first.value,
+      last: chunk.last.value,
+      sum: chunk.fold(0, (sum, count) => sum + count.count),
+    );
+  });
+}
+
+void printBuckets(Iterable<Bucket> buckets) {
+  for (var bucket in buckets) {
+    print("${bucket.first}-${bucket.last} : ${bucket.sum}");
+  }
+}
+
 void main() async {
   final String directoryPath = p.join('web', 'boards');
   final List<Board> boards = await loadBoards(directoryPath);
@@ -71,18 +134,23 @@ void main() async {
     }
   }
 
-  List<WordCount> wordCounts = stats.commonWords.counts.entries
-      .map((entry) => WordCount(entry.key, entry.value))
-      .toList();
-  wordCounts.sort((a, b) => -a.count.compareTo(b.count));
-  wordCounts = wordCounts.sublist(0, 50);
-  for (var count in wordCounts) {
-    print("${count.word} : ${count.count}");
-  }
+  // Max Score (bucketed by 50s)
+  print("Max Score:");
+  printBuckets(bucketCounts(data: stats.maxScores, bucketSize: 50));
 
-// Max Score (bucketed by 50s)
-// Number of answers (bucketed by 5, starting at 20)
-// Center Letter Frequency
-// Valid Letter Frequency
-// Most common words
+  // Number of answers (bucketed by 5, starting at 20)
+  print("Number of Answers:");
+  printBuckets(bucketCounts(data: stats.numberOfAnswers, bucketSize: 5));
+
+  // // Center Letter Frequency
+  // print("Center Letters:");
+  // printLetterFrequency(stats.centerLetters);
+
+  // Valid Letter Frequency
+  // print("Valid Letters:");
+  // printLetterFrequency(stats.validLetters);
+
+  // Most common words
+  // print("Most Common Words:");
+  // printTopN(stats.commonWords, 50);
 }

@@ -13,6 +13,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:pangram/board.dart';
+import 'package:pangram/utils.dart';
 import 'package:pangram/manifest.dart';
 import 'package:path/path.dart' as p;
 
@@ -170,17 +171,6 @@ class BoardGenerator {
 
     return allBoards;
   }
-}
-
-List<List<T>> chunkList<T>(List<T> list, int chunkSize) {
-  int length = list.length;
-  List<List<T>> chunks = <List<T>>[];
-
-  for (int i = 0; i < length; i += chunkSize) {
-    var end = (i + chunkSize < length) ? i + chunkSize : length;
-    chunks.add(list.sublist(i, end));
-  }
-  return chunks;
 }
 
 class WordFrequencies {
