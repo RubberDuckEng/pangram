@@ -9,6 +9,7 @@ import 'pangram.dart';
 import 'board.dart';
 import 'game_state.dart';
 import 'manifest.dart';
+import 'stats.dart';
 
 void main() {
   final Server server = Server();
@@ -26,7 +27,13 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.amber,
       ),
-      home: MainPage(title: 'Pangram', server: server),
+      initialRoute: '/',
+      routes: {
+        // When navigating to the "/" route, build the FirstScreen widget.
+        '/': (context) => MainPage(title: 'Pangram', server: server),
+        // When navigating to the "/second" route, build the SecondScreen widget.
+        '/stats': (context) => StatsPage(),
+      },
     );
   }
 }
@@ -158,29 +165,8 @@ class Score extends StatelessWidget {
   final List<String> foundWords;
   Score({required this.foundWords});
 
-  int scoreForWord(String word) {
-    // Quoting http://varianceexplained.org/r/honeycomb-puzzle/
-    // Four-letter words are worth 1 point each, while five-letter words are
-    // worth 5 points, six-letter words are worth 6 points, seven-letter words
-    // are worth 7 points, etc. Words that use all of the seven letters in the
-    // honeycomb are known as “pangrams” and earn 7 bonus points (in addition
-    // to the points for the length of the word). So in the above example,
-    // MEGAPLEX is worth 15 points.
-
-    int length = word.length;
-    if (length < 4) {
-      throw ArgumentError("Only know how to score words above 4 letters");
-    }
-
-    if (length == 4) return 1;
-    int uniqueLetterCount = Set.from(word.split('')).length;
-    // Assuming reasonable inputs (not checking for > 7).
-    int pangramBonus = (uniqueLetterCount == 7) ? 7 : 0;
-    return pangramBonus + length;
-  }
-
   int computeScore(List<String> words) {
-    return words.fold(0, (sum, word) => sum + scoreForWord(word));
+    return words.fold(0, (sum, word) => sum + Board.scoreForWord(word));
   }
 
   @override
