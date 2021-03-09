@@ -30,6 +30,8 @@ dependencies:
   path: ^1.8.0
   expansion_tile_card: ^2.0.0
   shared_preferences: ^2.0.3
+  fl_chart: ^0.20.1
+  glob: ^2.0.0
 
 dev_dependencies:
   flutter_test:

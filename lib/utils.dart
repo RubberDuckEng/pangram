@@ -1,3 +1,4 @@
+// TODO: Should this be an extension on List instead?
 List<List<T>> chunkList<T>(List<T> list, int chunkSize) {
   int length = list.length;
   List<List<T>> chunks = <List<T>>[];

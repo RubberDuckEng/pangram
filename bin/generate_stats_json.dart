@@ -1,9 +1,3 @@
-// Max Score (bucketed by 50s)
-// Number of answers (bucketed by 5, starting at 20)
-// Center Letter Frequency
-// Valid Letter Frequency
-// Most common words
-
 import 'dart:io';
 import 'dart:convert';
 
@@ -11,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:pangram/board.dart';
 import 'package:pangram/manifest.dart';
 import 'package:pangram/utils.dart';
+import 'package:pangram/board_stats.dart';
 
 class CountedSet<T> {
   final Map<T, int> counts = <T, int>{};
@@ -50,41 +45,24 @@ Future<List<Board>> loadBoards(String directoryPath) async {
   return boards;
 }
 
-class WordCount {
-  final String word;
-  final int count;
-  WordCount(this.word, this.count);
+void printWordCounts(List<WordCount> wordCounts, {bool asPercent = false}) {
+  int totalCount = wordCounts.fold(0, (sum, count) => sum + count.count);
+  for (var count in wordCounts) {
+    if (asPercent) {
+      var percent = (count.count / totalCount * 100).toStringAsFixed(2);
+      print("${count.word} $percent%");
+    } else {
+      print("${count.word} : ${count.count}");
+    }
+  }
 }
 
-void printTopN(CountedSet counts, int topNCount) {
+List<WordCount> toSortedWordCountList(CountedSet counts) {
   List<WordCount> wordCounts = counts.counts.entries
       .map((entry) => WordCount(entry.key, entry.value))
       .toList();
-  wordCounts.sort((a, b) => -a.count.compareTo(b.count));
-  wordCounts = wordCounts.sublist(0, topNCount);
-  for (var count in wordCounts) {
-    print("${count.word} : ${count.count}");
-  }
-}
-
-void printLetterFrequency(CountedSet letterCounts) {
-  List<WordCount> wordCounts = letterCounts.counts.entries
-      .map((entry) => WordCount(entry.key, entry.value))
-      .toList();
   wordCounts.sort((a, b) => a.word.compareTo(b.word));
-  int totalCount = wordCounts.fold(0, (sum, count) => sum + count.count);
-  for (var count in wordCounts) {
-    var percent = (count.count / totalCount * 100).toStringAsFixed(2);
-    print("${count.word} $percent%");
-  }
-}
-
-class Bucket {
-  final int first;
-  final int last;
-  final int sum;
-
-  Bucket({required this.first, required this.last, required this.sum});
+  return wordCounts;
 }
 
 // Should this merge with WordCount?
@@ -118,39 +96,63 @@ void printBuckets(Iterable<Bucket> buckets) {
   }
 }
 
-void main() async {
-  final String directoryPath = p.join('web', 'boards');
-  final List<Board> boards = await loadBoards(directoryPath);
-  final Counters stats = Counters();
-  for (Board board in boards) {
-    stats.maxScores.count(board.computeMaxScore());
-    stats.numberOfAnswers.count(board.validWords.length);
-    stats.centerLetters.count(board.center);
-    for (String letter in board.otherLetters) {
-      stats.validLetters.count(letter);
-    }
-    for (String word in board.validWords) {
-      stats.commonWords.count(word);
-    }
-  }
-
+void printStats(BoardStats stats) {
   // Max Score (bucketed by 50s)
   print("Max Score:");
-  printBuckets(bucketCounts(data: stats.maxScores, bucketSize: 50));
+  printBuckets(stats.maxScores);
 
   // Number of answers (bucketed by 5, starting at 20)
   print("Number of Answers:");
-  printBuckets(bucketCounts(data: stats.numberOfAnswers, bucketSize: 5));
+  printBuckets(stats.numberOfAnswers);
 
   // // Center Letter Frequency
   // print("Center Letters:");
-  // printLetterFrequency(stats.centerLetters);
+  // printWordCounts(stats.centerLetters, asPercent: true);
 
   // Valid Letter Frequency
-  // print("Valid Letters:");
-  // printLetterFrequency(stats.validLetters);
+  print("Valid Letters:");
+  printWordCounts(stats.validLetters, asPercent: true);
 
   // Most common words
-  // print("Most Common Words:");
-  // printTopN(stats.commonWords, 50);
+  print("Most Common Words:");
+  printWordCounts(stats.commonWords);
+}
+
+void main() async {
+  final String directoryPath = p.join('web', 'boards');
+  final List<Board> boards = await loadBoards(directoryPath);
+  final Counters counters = Counters();
+  for (Board board in boards) {
+    counters.maxScores.count(board.computeMaxScore());
+    counters.numberOfAnswers.count(board.validWords.length);
+    counters.centerLetters.count(board.center);
+    for (String letter in board.otherLetters) {
+      counters.validLetters.count(letter);
+    }
+    for (String word in board.validWords) {
+      counters.commonWords.count(word);
+    }
+  }
+
+  List<WordCount> mostComonWords = counters.commonWords.counts.entries
+      .map((entry) => WordCount(entry.key, entry.value))
+      .toList();
+  mostComonWords.sort((a, b) => -a.count.compareTo(b.count));
+
+  // TODO: Perhaps a constructor which just takes Counters?
+  BoardStats stats = BoardStats(
+    maxScores: bucketCounts(data: counters.maxScores, bucketSize: 50).toList(),
+    numberOfAnswers:
+        bucketCounts(data: counters.numberOfAnswers, bucketSize: 5).toList(),
+    centerLetters: toSortedWordCountList(counters.centerLetters),
+    validLetters: toSortedWordCountList(counters.validLetters),
+    commonWords: mostComonWords.sublist(0, 50),
+  );
+
+  printStats(stats);
+
+  String statsPath = p.join(directoryPath, "stats.json");
+  print("Writing to $statsPath");
+  var jsonString = json.encode(stats.toJson());
+  File(statsPath).writeAsString(jsonString);
 }
