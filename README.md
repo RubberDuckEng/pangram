@@ -23,6 +23,7 @@ https://nytbee.com/ has lots of notes on how the NYT does this.
 * Buttons should be more tactile (material splash, etc.)
 * Should look different on tablet vs. phone.
 * Needs a text field for when using a keyboard. (Hexegons should still press when typing from keyboard?)
+* Error messages are too far away from the keys on desktop.
 
 ## Features
 * Social, High-score, share link.  "beat your friend"

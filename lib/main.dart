@@ -39,9 +39,9 @@ class MyApp extends StatelessWidget {
 }
 
 class FoundWords extends StatefulWidget {
-  final List<String> foundWords;
+  final List<String> wordsInOrderFound;
   final Board board;
-  FoundWords({Key? key, required this.foundWords, required this.board})
+  FoundWords({Key? key, required this.wordsInOrderFound, required this.board})
       : super(key: key);
 
   @override
@@ -63,20 +63,24 @@ class _FoundWordsState extends State<FoundWords> {
       return "${string[0].toUpperCase()}${string.substring(1)}";
     }
 
-    widget.foundWords.sort(); // Does this sort the caller's list too?
-    List<String> capitalizedWords = widget.foundWords.map(capitalize).toList();
+    List<String> capitalizedWords =
+        widget.wordsInOrderFound.map(capitalize).toList();
+
+    List<String> alphabeticalOrder = List.from(capitalizedWords);
+    alphabeticalOrder.sort();
 
     return ExpansionTileCard(
       title: expanded
           ? Text("Found")
-          : Text(capitalizedWords.join(", "), overflow: TextOverflow.ellipsis),
+          : Text(capitalizedWords.reversed.join(", "),
+              overflow: TextOverflow.ellipsis),
       onExpansionChanged: _expansionChanged,
       subtitle: expanded
           ? null
           : Align(
               alignment: Alignment.bottomRight,
               child: Text(
-                "${widget.foundWords.length} of ${widget.board.validWords.length}",
+                "${widget.wordsInOrderFound.length} of ${widget.board.validWords.length}",
                 style: TextStyle(fontSize: 10),
               ),
             ),
@@ -85,7 +89,7 @@ class _FoundWordsState extends State<FoundWords> {
         SizedBox(
           height: 200,
           child: ListView(
-            children: capitalizedWords
+            children: alphabeticalOrder
                 .map((word) => ListTile(title: Text(word)))
                 .toList(),
           ),
@@ -109,8 +113,8 @@ class PangramGame extends StatefulWidget {
 
 class Breakdown extends StatelessWidget {
   final List<String> validWords;
-  final List<String> foundWords;
-  Breakdown({required this.validWords, required this.foundWords});
+  final List<String> wordsInOrderFound;
+  Breakdown({required this.validWords, required this.wordsInOrderFound});
 
   @override
   Widget build(BuildContext context) {
@@ -121,7 +125,7 @@ class Breakdown extends StatelessWidget {
       validCounts[word.length] = count + 1;
     }
     Map<int, int> foundCounts = <int, int>{};
-    for (String word in foundWords) {
+    for (String word in wordsInOrderFound) {
       int count = foundCounts[word.length] ?? 0;
       foundCounts[word.length] = count + 1;
     }
@@ -162,8 +166,8 @@ class Difficulty extends StatelessWidget {
 }
 
 class Score extends StatelessWidget {
-  final List<String> foundWords;
-  Score({required this.foundWords});
+  final List<String> wordsInOrderFound;
+  Score({required this.wordsInOrderFound});
 
   int computeScore(List<String> words) {
     return words.fold(0, (sum, word) => sum + Board.scoreForWord(word));
@@ -171,14 +175,14 @@ class Score extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text("Score: ${computeScore(foundWords)}");
+    return Text("Score: ${computeScore(wordsInOrderFound)}");
   }
 }
 
 class Progress extends StatefulWidget {
   final List<String> validWords;
-  final List<String> foundWords;
-  Progress({required this.validWords, required this.foundWords});
+  final List<String> wordsInOrderFound;
+  Progress({required this.validWords, required this.wordsInOrderFound});
 
   @override
   _ProgressState createState() => _ProgressState();
@@ -188,12 +192,12 @@ class _ProgressState extends State<Progress> {
   @override
   Widget build(BuildContext context) {
     return ExpansionTileCard(
-      title: Score(foundWords: widget.foundWords),
+      title: Score(wordsInOrderFound: widget.wordsInOrderFound),
       children: <Widget>[
         Divider(thickness: 1.0, height: 1.0),
         Breakdown(
           validWords: widget.validWords,
-          foundWords: widget.foundWords,
+          wordsInOrderFound: widget.wordsInOrderFound,
         )
       ],
     );
@@ -227,7 +231,7 @@ class _PangramGameState extends State<PangramGame> {
       return 'Words must be at least 4 letters.';
     }
 
-    if (widget.game.foundWords.contains(guessedWord)) {
+    if (widget.game.wordsInOrderFound.contains(guessedWord)) {
       return 'Already found "$guessedWord"';
     }
 
@@ -253,12 +257,10 @@ class _PangramGameState extends State<PangramGame> {
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
         return;
       }
-      // TODO(eseidel): Having to manually call save here doesn't seem right.
-      widget.game.foundWords.add(guessedWord);
-      widget.game.save();
+      widget.game.foundWord(guessedWord);
     });
 
-    if (widget.game.foundWords.length == widget.game.board.validWords.length) {
+    if (widget.game.haveWon) {
       widget.onWin();
     }
   }
@@ -284,11 +286,11 @@ class _PangramGameState extends State<PangramGame> {
           // TODO(eseidel): SizedBox is a hack!
           Progress(
             validWords: widget.game.board.validWords,
-            foundWords: widget.game.foundWords,
+            wordsInOrderFound: widget.game.wordsInOrderFound,
           ),
           SizedBox(height: 10),
           FoundWords(
-            foundWords: widget.game.foundWords,
+            wordsInOrderFound: widget.game.wordsInOrderFound,
             board: widget.game.board,
           ),
           SizedBox(height: 20),
@@ -312,7 +314,9 @@ class _PangramGameState extends State<PangramGame> {
                   onPressed: scramblePressed, child: Text("SCRAMBLE")),
               SizedBox(width: 20),
               ElevatedButton(
-                onPressed: typedWord == "" ? null : enterPressed,
+                onPressed: (typedWord == "" || widget.game.haveWon)
+                    ? null
+                    : enterPressed,
                 child: Text("ENTER"),
               ),
             ],

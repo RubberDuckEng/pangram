@@ -12,7 +12,7 @@ class GameState {
   static const String gameStateKey = 'currentGame';
 
   final Board board;
-  List<String> foundWords = [];
+  List<String> wordsInOrderFound = [];
 
   GameState(this.board);
 
@@ -21,6 +21,15 @@ class GameState {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.setString(gameStateKey, json.encode(this.toJson()));
   }
+
+  Iterable<String> foundWordsByMostRecent() => wordsInOrderFound.reversed;
+
+  void foundWord(String word) {
+    wordsInOrderFound.add(word);
+    save();
+  }
+
+  bool get haveWon => wordsInOrderFound.length == board.validWords.length;
 
   static Future<GameState?> loadSaved() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
