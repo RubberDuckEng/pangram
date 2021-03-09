@@ -61,7 +61,7 @@ class WordList {
     // Also exclude words with S in them?
     // https://nytbee.com/ suggests S is not allowed.
     // https://nytbee.com/ suggests NYT never goes above 80 words!
-    return word.length >= 4;
+    return (word.length >= 4 && !word.contains('s'));
   }
 
   List<LetterCluster> _computeLetterClusters() {
