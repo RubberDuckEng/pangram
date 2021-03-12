@@ -40,7 +40,7 @@ class HexagonPainter extends CustomPainter {
   }
 }
 
-class PangramTile extends StatelessWidget {
+class PangramTile extends StatefulWidget {
   final String letter;
   final bool isCenter;
   final ValueChanged<String> onPressed;
@@ -53,12 +53,41 @@ class PangramTile extends StatelessWidget {
       : super(key: key);
 
   @override
+  _PangramTileState createState() => _PangramTileState();
+}
+
+class _PangramTileState extends State<PangramTile> {
+  bool _isDown = false;
+
+  Color _getCenterColor() {
+    return _isDown ? Colors.deepOrange.shade400 : Colors.deepOrange.shade500;
+  }
+
+  Color _getEdgeColor() {
+    return _isDown ? Colors.yellow.shade700 : Colors.yellow.shade800;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    Color color =
-        isCenter ? Colors.deepOrange.shade500 : Colors.yellow.shade800;
+    Color color = widget.isCenter ? _getCenterColor() : _getEdgeColor();
     return GestureDetector(
       onTap: () {
-        onPressed(letter);
+        widget.onPressed(widget.letter);
+      },
+      onTapDown: (TapDownDetails details) {
+        setState(() {
+          _isDown = true;
+        });
+      },
+      onTapUp: (TapUpDetails details) {
+        setState(() {
+          _isDown = false;
+        });
+      },
+      onTapCancel: () {
+        setState(() {
+          _isDown = false;
+        });
       },
       child: Stack(alignment: AlignmentDirectional.center, children: [
         SizedBox(
@@ -66,7 +95,7 @@ class PangramTile extends StatelessWidget {
           width: 75.0,
           child: CustomPaint(painter: HexagonPainter(color: color)),
         ),
-        Text(letter.toUpperCase(), style: TextStyle(fontSize: 24)),
+        Text(widget.letter.toUpperCase(), style: TextStyle(fontSize: 24)),
       ]),
     );
   }

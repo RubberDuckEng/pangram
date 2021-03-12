@@ -205,25 +205,51 @@ class _ProgressState extends State<Progress> {
 }
 
 class _PangramGameState extends State<PangramGame> {
-  String typedWord = "";
   List<int> otherLettersOrder = List<int>.generate(6, (i) => i);
 
-  void typeLetter(String letter) {
-    setState(() {
-      typedWord += letter;
-    });
+  final textController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    textController.addListener(_handleTextChanged);
   }
 
-  void scramblePressed() {
+  void _handleTextChanged() {
+    final String text = textController.text.toUpperCase();
+    textController.value = textController.value.copyWith(
+      text: text,
+      selection:
+          TextSelection(baseOffset: text.length, extentOffset: text.length),
+      composing: TextRange.empty,
+    );
+
+    // TODO: Move the buttons into their own widgets that listen to the text controller.
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    // Clean up the controller when the widget is removed from the widget tree.
+    // This also removes the _printLatestValue listener.
+    textController.dispose();
+    super.dispose();
+  }
+
+  void _handleLetterPressed(String letter) {
+    textController.text += letter;
+  }
+
+  void _handleScamble() {
     setState(() {
       otherLettersOrder.shuffle();
     });
   }
 
-  void deletePressed() {
-    setState(() {
-      typedWord = typedWord.substring(0, typedWord.length - 1);
-    });
+  void _handleDelete() {
+    textController.text =
+        textController.text.substring(0, textController.text.length - 1);
   }
 
   String? _validateGuessedWord(String guessedWord) {
@@ -246,10 +272,10 @@ class _PangramGameState extends State<PangramGame> {
   }
 
   // TODO: This likely belongs outside of this object.
-  void enterPressed() {
+  void _handleEnter() {
     setState(() {
-      var guessedWord = typedWord;
-      typedWord = "";
+      var guessedWord = textController.text.toLowerCase();
+      textController.text = "";
 
       String? errorMessage = _validateGuessedWord(guessedWord);
       if (errorMessage != null) {
@@ -294,29 +320,33 @@ class _PangramGameState extends State<PangramGame> {
             board: widget.game.board,
           ),
           SizedBox(height: 20),
-          Text(typedWord.toUpperCase()),
+          TextField(
+            autofocus: true,
+            controller: textController,
+            onEditingComplete: _handleEnter,
+          ),
           SizedBox(height: 20),
           PangramButtons(
             center: widget.game.board.center,
             otherLetters: scrambledOtherLetters(),
-            typeLetter: typeLetter,
+            typeLetter: _handleLetterPressed,
           ),
           SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               ElevatedButton(
-                onPressed: typedWord == "" ? null : deletePressed,
+                onPressed: textController.text == "" ? null : _handleDelete,
                 child: Text("DELETE"),
               ),
               SizedBox(width: 20),
               ElevatedButton(
-                  onPressed: scramblePressed, child: Text("SCRAMBLE")),
+                  onPressed: _handleScamble, child: Text("SCRAMBLE")),
               SizedBox(width: 20),
               ElevatedButton(
-                onPressed: (typedWord == "" || widget.game.haveWon)
+                onPressed: (textController.text == "" || widget.game.haveWon)
                     ? null
-                    : enterPressed,
+                    : _handleEnter,
                 child: Text("ENTER"),
               ),
             ],
