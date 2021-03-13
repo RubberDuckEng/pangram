@@ -22,7 +22,7 @@ https://nytbee.com/ has lots of notes on how the NYT does this.
 * Needs visual design
 * Buttons should be more tactile (material splash, etc.)
 * Should look different on tablet vs. phone.
-* Needs a text field for when using a keyboard. (Hexegons should still press when typing from keyboard?)
+* Should hexegons still press when typing from keyboard?
 * Error messages are too far away from the keys on desktop.
 
 ## Features
@@ -31,3 +31,6 @@ https://nytbee.com/ has lots of notes on how the NYT does this.
 * Add Analytics (firebase_analytics is not yet null-safe)
 * Need progress towards max score.
 * Analysis like https://nytbee.com/ has!
+
+## A Server-side
+* Some sort of (auto-curated) historical list to allow most users to play the same N puzzels?

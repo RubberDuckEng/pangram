@@ -96,6 +96,21 @@ class NumberOfAnswers extends StatelessWidget {
   }
 }
 
+class MostCommonWords extends StatelessWidget {
+  final List<WordCount> commonWords;
+  MostCommonWords(this.commonWords);
+  @override
+  Widget build(BuildContext context) {
+    // TODO: This doesn't actually wrap yet. To be fixed.
+    return Wrap(
+      direction: Axis.vertical,
+      children: commonWords
+          .map((count) => Text("${count.word} : ${count.count}"))
+          .toList(),
+    );
+  }
+}
+
 class StatsPage extends StatefulWidget {
   @override
   _StatsPageState createState() => _StatsPageState();
@@ -146,6 +161,7 @@ class _StatsPageState extends State<StatsPage> {
             ),
           ],
         ),
+        MostCommonWords(stats.commonWords),
       ];
     }
 
