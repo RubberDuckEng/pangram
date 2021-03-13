@@ -144,6 +144,7 @@ void main() async {
     maxScores: bucketCounts(data: counters.maxScores, bucketSize: 50).toList(),
     numberOfAnswers:
         bucketCounts(data: counters.numberOfAnswers, bucketSize: 5).toList(),
+    // TODO: Missing letters are omitted instead of '0'.
     centerLetters: toSortedWordCountList(counters.centerLetters),
     validLetters: toSortedWordCountList(counters.validLetters),
     commonWords: mostComonWords.sublist(0, 50),

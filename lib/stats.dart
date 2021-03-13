@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:pangram/board_stats.dart';
@@ -96,6 +97,54 @@ class NumberOfAnswers extends StatelessWidget {
   }
 }
 
+class LetterFrequency extends StatelessWidget {
+  final List<WordCount> letterFrequency;
+  LetterFrequency(this.letterFrequency);
+  @override
+  Widget build(BuildContext context) {
+    return BarChart(
+      buildBarChartData(),
+    );
+  }
+
+  int letterToInt(String letter) =>
+      letter.codeUnits.first - 'a'.codeUnits.first;
+
+  String intToLetter(int offset) =>
+      String.fromCharCode('a'.codeUnits.first + offset);
+
+  BarChartData buildBarChartData() {
+    List<BarChartGroupData> barGroups = <BarChartGroupData>[];
+    int sum = letterFrequency.fold(0, (sum, count) => sum + count.count);
+    for (WordCount letterCount in letterFrequency) {
+      barGroups.add(BarChartGroupData(
+        x: letterToInt(letterCount.word),
+        barRods: [
+          BarChartRodData(
+            y: (letterCount.count.toDouble() / sum),
+            colors: [Colors.lightBlueAccent, Colors.greenAccent],
+          )
+        ],
+      ));
+    }
+    return BarChartData(
+      barGroups: barGroups,
+      titlesData: FlTitlesData(
+        show: true,
+        bottomTitles: SideTitles(
+          showTitles: true,
+          getTextStyles: (value) =>
+              const TextStyle(color: Color(0xff939393), fontSize: 10),
+          margin: 10,
+          getTitles: (double value) {
+            return intToLetter(value.toInt());
+          },
+        ),
+      ),
+    );
+  }
+}
+
 class MostCommonWords extends StatelessWidget {
   final List<WordCount> commonWords;
   MostCommonWords(this.commonWords);
@@ -157,6 +206,22 @@ class _StatsPageState extends State<StatsPage> {
               children: [
                 Text("Number of Answers in all Puzzles"),
                 NumberOfAnswers(stats.numberOfAnswers),
+              ],
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            Column(
+              children: [
+                Text("Center Letter Frequency"),
+                LetterFrequency(stats.centerLetters),
+              ],
+            ),
+            Column(
+              children: [
+                Text("Valid Letter Frequency"),
+                LetterFrequency(stats.validLetters),
               ],
             ),
           ],
