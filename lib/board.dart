@@ -3,7 +3,7 @@ import 'package:json_annotation/json_annotation.dart';
 part 'board.g.dart';
 
 @JsonSerializable()
-class Board {
+class Board implements Comparable<Board> {
   final String center;
   final List<String> otherLetters;
   final List<String> validWords;
@@ -50,6 +50,9 @@ class Board {
 
   // Assumes otherLetters is sorted (as it is in constructor);
   String get id => "$center:${otherLetters.join('')}";
+
+  @override
+  int compareTo(Board other) => id.compareTo(other.id);
 
   factory Board.fromJson(Map<String, dynamic> json) => _$BoardFromJson(json);
   Map<String, dynamic> toJson() => _$BoardToJson(this);

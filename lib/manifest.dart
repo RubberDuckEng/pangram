@@ -39,7 +39,7 @@ class ChunkHeader {
 
 @JsonSerializable()
 class Manifest {
-  final int version = 1;
+  final int version = 2;
   final int chunkSize;
   final int totalBoards;
   final String numberPattern;
@@ -59,6 +59,17 @@ class Manifest {
   String chunkNameFromIndex(int index) {
     NumberFormat formatter = NumberFormat(numberPattern);
     return "$prefix${formatter.format(index)}$suffix";
+  }
+
+  String? findChunkNameForBoardId(String boardId) {
+    // Assuming chunk headers are sorted?
+    for (var header in chunkHeaders) {
+      // boardId is after this chunk
+      if (header.last.compareTo(boardId) < 0) continue;
+      if (header.first.compareTo(boardId) <= 0)
+        return chunkNameFromIndex(header.index);
+    }
+    return null;
   }
 
   factory Manifest.fromJson(Map<String, dynamic> json) =>

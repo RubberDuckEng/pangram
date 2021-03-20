@@ -234,6 +234,7 @@ void main() async {
 
   BoardGenerator boardGenerator = BoardGenerator(wordList, frequencies);
   List<Board> boards = boardGenerator.generateBoards();
+  boards.sort();
 
   const String directory = 'web/boards';
   const String prefix = 'boards';

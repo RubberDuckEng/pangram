@@ -1,19 +1,51 @@
-import 'dart:convert';
-import 'dart:math';
-
 import 'package:expansion_tile_card/expansion_tile_card.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
 import 'pangram.dart';
 import 'board.dart';
 import 'game_state.dart';
-import 'manifest.dart';
 import 'stats.dart';
+import 'server.dart';
 
 void main() {
   final Server server = Server();
   runApp(MyApp(server: server));
+}
+
+class UnknownPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Text("UNKNOWN");
+  }
+}
+
+class MainPage extends StatefulWidget {
+  final Server server;
+  MainPage({required this.server});
+
+  @override
+  _MainPageState createState() => _MainPageState();
+}
+
+class _MainPageState extends State<MainPage> {
+  @override
+  void initState() {
+    super.initState();
+    initialLoad();
+  }
+
+  Future initialLoad() async {
+    Board board = await widget.server.nextBoard();
+    if (!mounted) {
+      return;
+    }
+    Navigator.pushNamed(context, '/board/${board.id}');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Text('LOADING');
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -28,11 +60,28 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.amber,
       ),
       initialRoute: '/',
-      routes: {
-        // When navigating to the "/" route, build the FirstScreen widget.
-        '/': (context) => MainPage(title: 'Pangram', server: server),
-        // When navigating to the "/second" route, build the SecondScreen widget.
-        '/stats': (context) => StatsPage(),
+      onGenerateRoute: (settings) {
+        String? name = settings.name;
+        if (name != null) {
+          if (name == '/') {
+            return MaterialPageRoute(
+                builder: (context) => MainPage(server: server));
+          }
+          if (name == '/stats') {
+            return MaterialPageRoute(builder: (context) => StatsPage());
+          }
+
+          // Handle '/board/:id'
+          var uri = Uri.parse(name);
+          if (uri.pathSegments.length == 2 &&
+              uri.pathSegments.first == 'board') {
+            var id = uri.pathSegments[1];
+            return MaterialPageRoute(
+                builder: (context) => BoardPage(id: id, server: server));
+          }
+        }
+
+        return MaterialPageRoute(builder: (context) => UnknownPage());
       },
     );
   }
@@ -357,47 +406,24 @@ class _PangramGameState extends State<PangramGame> {
   }
 }
 
-class MainPage extends StatefulWidget {
-  MainPage({Key? key, this.title, required this.server}) : super(key: key);
-  final String? title;
+class BoardPage extends StatefulWidget {
+  BoardPage({Key? key, required this.server, required this.id})
+      : super(key: key);
   final Server server;
+  final String id;
 
   @override
-  _MainPageState createState() => _MainPageState();
+  _BoardPageState createState() => _BoardPageState();
 }
 
-class Server {
-  Manifest? _cachedManifest;
-  static const String boardsDirectory = 'boards';
-
-  Future<dynamic> _fetchJson(String url) async {
-    print("Loading $url");
-    http.Response response = await http.get(Uri.parse(url));
-    return json.decode(response.body);
-  }
-
-  Future<Manifest> ensureManifest() async {
-    if (_cachedManifest != null) return Future.value(_cachedManifest);
-    var jsonManifest = await _fetchJson("$boardsDirectory/manifest.json");
-    Manifest manifest = Manifest.fromJson(jsonManifest);
-    _cachedManifest = manifest;
-    return manifest;
-  }
-
-  Future<Board> nextBoard() async {
-    Manifest manifest = await ensureManifest();
-    int boardIndex = Random().nextInt(manifest.totalBoards);
-    int chunkIndex = boardIndex ~/ manifest.chunkSize;
-    String chunkName = manifest.chunkNameFromIndex(chunkIndex);
-    List<dynamic> chunkJson = await _fetchJson("$boardsDirectory/$chunkName");
-    List<Board> chunk =
-        chunkJson.map((boardJson) => Board.fromJson(boardJson)).toList();
-    int chunkLocalBoardIndex = boardIndex % manifest.chunkSize;
-    return chunk[chunkLocalBoardIndex];
-  }
+enum BoardPageStatus {
+  loading,
+  playing,
+  notFound,
 }
 
-class _MainPageState extends State<MainPage> {
+class _BoardPageState extends State<BoardPage> {
+  BoardPageStatus _status = BoardPageStatus.loading;
   GameState? _game;
 
   // TODO: This belongs outside of this widget.
@@ -408,29 +434,43 @@ class _MainPageState extends State<MainPage> {
   }
 
   Future initialLoad() async {
-    print("initialLoad");
+    print("BoardPage ${widget.id}");
+    // if widget id
+    // attempt to get that board.
+    // If you got that board, load it, clear existing state.
+    // If you failed to get that board, show as message, load new board?
+
     GameState? savedGame = await GameState.loadSaved();
-    if (savedGame == null) {
-      getNextBoard();
+    if (savedGame != null && savedGame.board.id == widget.id) {
+      setState(() {
+        _status = BoardPageStatus.playing;
+        _game = savedGame;
+      });
       return;
     }
 
+    Board? board = await widget.server.getBoard(widget.id);
+    if (board == null) {
+      setState(() {
+        _status = BoardPageStatus.notFound;
+      });
+      return;
+    }
+
+    GameState newGame = GameState(board);
     setState(() {
-      _game = savedGame;
+      _status = BoardPageStatus.playing;
+      _game = newGame;
     });
+    newGame.save();
   }
 
   Future getNextBoard() async {
-    print("getNextBoard");
     Board board = await widget.server.nextBoard();
     if (!mounted) {
       return;
     }
-    setState(() {
-      GameState newGame = GameState(board);
-      _game = newGame;
-      newGame.save();
-    });
+    Navigator.pushNamed(context, '/board/${board.id}');
   }
 
   void onWin() {
@@ -445,26 +485,37 @@ class _MainPageState extends State<MainPage> {
   void onNextGame() {
     setState(() {
       _game = null;
+      _status = BoardPageStatus.loading;
     });
     getNextBoard();
   }
 
+  Widget getBody() {
+    switch (_status) {
+      case BoardPageStatus.loading:
+        return Text("Status: Loading....");
+      case BoardPageStatus.playing:
+        {
+          GameState? game = _game;
+          if (game != null) return PangramGame(game: game, onWin: onWin);
+          return Text("Error: null game object.");
+        }
+      case BoardPageStatus.notFound:
+        return Text("Status: Not Found....");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    GameState? game = _game;
-    var body = (game == null)
-        ? Text("Loading...")
-        : PangramGame(game: game, onWin: onWin);
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title!),
+        title: Text("Pangram"),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            body,
+            getBody(),
           ],
         ),
       ),
