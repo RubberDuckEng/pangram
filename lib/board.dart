@@ -51,6 +51,10 @@ class Board implements Comparable<Board> {
   // Assumes otherLetters is sorted (as it is in constructor);
   String get id => "$center:${otherLetters.join('')}";
 
+  static bool isValidId(String id) {
+    return id.length == 8 && id[1] == ':';
+  }
+
   @override
   int compareTo(Board other) => id.compareTo(other.id);
 

@@ -6,11 +6,11 @@ import 'board.dart';
 import 'game_state.dart';
 import 'stats.dart';
 import 'server.dart';
-import 'example.dart';
+import 'router.dart';
 
 void main() {
-  runApp(BooksApp());
-  // final Server server = Server();
+  final Server server = Server();
+  runApp(PangramApp(server: server));
   // runApp(MyApp(server: server));
 }
 
