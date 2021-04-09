@@ -66,8 +66,9 @@ class Manifest {
     for (var header in chunkHeaders) {
       // boardId is after this chunk
       if (header.last.compareTo(boardId) < 0) continue;
-      if (header.first.compareTo(boardId) <= 0)
+      if (header.first.compareTo(boardId) <= 0) {
         return chunkNameFromIndex(header.index);
+      }
     }
     return null;
   }

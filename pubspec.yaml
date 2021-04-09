@@ -32,6 +32,7 @@ dependencies:
   shared_preferences: ^2.0.3
   fl_chart: ^0.20.1
   glob: ^2.0.0
+  pedantic: ^1.11.0
 
 dev_dependencies:
   flutter_test:

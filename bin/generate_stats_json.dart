@@ -155,5 +155,5 @@ void main() async {
   String statsPath = p.join(directoryPath, "stats.json");
   print("Writing to $statsPath");
   var jsonString = json.encode(stats.toJson());
-  File(statsPath).writeAsString(jsonString);
+  await File(statsPath).writeAsString(jsonString);
 }

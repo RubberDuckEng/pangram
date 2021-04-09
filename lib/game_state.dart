@@ -19,7 +19,7 @@ class GameState {
   // Should we split this object into a GameController vs GameState?
   Future save() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.setString(gameStateKey, json.encode(this.toJson()));
+    return prefs.setString(gameStateKey, json.encode(toJson()));
   }
 
   Iterable<String> foundWordsByMostRecent() => wordsInOrderFound.reversed;

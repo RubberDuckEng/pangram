@@ -6,10 +6,12 @@ import 'board.dart';
 import 'game_state.dart';
 import 'stats.dart';
 import 'server.dart';
+import 'example.dart';
 
 void main() {
-  final Server server = Server();
-  runApp(MyApp(server: server));
+  runApp(BooksApp());
+  // final Server server = Server();
+  // runApp(MyApp(server: server));
 }
 
 class UnknownPage extends StatelessWidget {
@@ -39,7 +41,7 @@ class _MainPageState extends State<MainPage> {
     if (!mounted) {
       return;
     }
-    Navigator.pushNamed(context, '/board/${board.id}');
+    return Navigator.pushNamed(context, '/board/${board.id}');
   }
 
   @override
@@ -462,7 +464,7 @@ class _BoardPageState extends State<BoardPage> {
       _status = BoardPageStatus.playing;
       _game = newGame;
     });
-    newGame.save();
+    return newGame.save();
   }
 
   Future getNextBoard() async {
@@ -470,7 +472,7 @@ class _BoardPageState extends State<BoardPage> {
     if (!mounted) {
       return;
     }
-    Navigator.pushNamed(context, '/board/${board.id}');
+    return Navigator.pushNamed(context, '/board/${board.id}');
   }
 
   void onWin() {

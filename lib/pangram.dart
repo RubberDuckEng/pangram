@@ -133,6 +133,7 @@ class PangramLayoutDelegate extends MultiChildLayoutDelegate {
     }
   }
 
+  @override
   Size getSize(BoxConstraints constraints) => Size(200, 200);
 
   @override
